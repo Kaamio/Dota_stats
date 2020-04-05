@@ -1,8 +1,18 @@
 import sqlite3
 import os
-match_id  player_slot  radiant_win  duration  game_mode  lobby_type          hero_id  start_time  version  kills  deaths  assists  skill  leaver_status  party_size  win
+from sqlite3 import Error
+#match_id  player_slot  radiant_win  duration  game_mode  lobby_type          hero_id  start_time  version  kills  deaths  assists  skill  leaver_status  party_size  win
 def deletetable():
     os.remove("DotaData.db")
+
+def create_connection(path):
+    connection = None
+    try:
+        connection = sqlite3.connect(path)
+        print('Database connection established')
+    except Error as e:
+        print(f'the error {e} occured')
+    return connection
 
 def createdb():
     try:
@@ -45,5 +55,5 @@ def createdb():
             sqliteConnection.close()
             print("sqlite connection is closed")
 
-deletetable()
+#deletetable()
 #createdb()

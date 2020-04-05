@@ -4,7 +4,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
-
+import dotadata
+import os
+'''
 def herodata(df,hero): 
     #function returns the rows from the dataframe where hero_id = hero (given as argument)
        
@@ -50,3 +52,13 @@ while(True):
             wc = WordCloud(background_color="white",width=1000,height=1000, max_words=20,relative_scaling=0.5,normalize_plurals=False).generate_from_frequencies(list_of_words) 
             plt.imshow(wc)
             plt.show()
+'''
+def main():
+    x = (f'{os.getcwd()}/dota.sqlite')
+    print(x)
+    dotadata.create_connection(x)
+
+
+
+if __name__ == "__main__":
+    main()
