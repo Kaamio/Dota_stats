@@ -21,7 +21,7 @@ class Playerdata:
  
     #Fetch match data for Player -> create dataframe
     
-    def getPlayerData(self):   
+    def getPlayerData(self): 
     
         #get wins
         x = api_connect.Api(f"https://api.opendota.com/api/players/{self.player}/matches?win=1")
@@ -42,6 +42,8 @@ class Playerdata:
         #combine wins and losses
         Playerdata.df = pd.concat([Playerdata.df,Playerdata.ef],ignore_index=True)
         Playerdata.df = self.convertTime(Playerdata.df)
+        Playerdata.df['steam_id'] = self.player
+        return Playerdata.df
 
     def convertTime(self,df):
         #Convert timestamp from s since epoch to datetime
@@ -55,7 +57,7 @@ class Playerdata:
         data = x.getdata()
         return data 
 
-    def returndata(self):
-        return Playerdata.df
+#    def returndata(self):
+#        return Playerdata.df
 
 
