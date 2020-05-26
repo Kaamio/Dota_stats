@@ -21,4 +21,12 @@ class Player:
                 ("Length of the ID must be 8")
         
         player_instance = dota_main.Playerdata(steam_id)
-        df = player_instance.getPlayerData()     
+        df = player_instance.getPlayerData() 
+        
+    def get_steamid(self):
+        return self.steam_id    
+
+
+
+
+   

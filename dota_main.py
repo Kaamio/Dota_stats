@@ -59,5 +59,33 @@ class Playerdata:
 
 #    def returndata(self):
 #        return Playerdata.df
-
-
+'''
+df['start_time']<'2012-10-21' = 6.75
+df['start_time']<'2012-12-15' = 6.76
+df['start_time']<'2013-05-03' = 6.77
+df['start_time']<'2013-10-21' = 6.78
+df['start_time']<'2014-01-27' = 6.80
+df['start_time']<'2014-04-29' = 6.81
+df['start_time']<'2014-09-24' = 6.82
+df['start_time']<'2014-12-17' = 6.83
+df['start_time']<'2015-04-30' = 6.84
+df['start_time']<'2015-09-24' = 6.85
+df['start_time']<'2015-12-16' = 6.86
+df['start_time']<'2016-04-25' = 6.87
+df['start_time']<'2016-06-12' = 6.88
+df['start_time']<'2016-12-12' = 7.00
+df['start_time']<'2017-05-15' = 7.06
+df['start_time']<'2017-10-31' = 7.07
+df['start_time']<'2018-03-01' = 7.10
+df['start_time']<'2018-03-29' = 7.12
+df['start_time']<'2018-04-26' = 7.14
+df['start_time']<'2018-05-27' = 7.16
+df['start_time']<'2018-07-29' = 7.19
+df['start_time']<'2018-11-19' = 7.20
+df['start_time']<'2019-01-29' = 7.21
+df['start_time']<'2019-05-24' = 7.22
+df['start_time']<'2019-11-26' = 7.23
+df['start_time']<'2020-01-26' = 7.24
+df['start_time']<'2020-03-17' = 7.25
+df['start_time']<'2020-04-17' = 7.26
+'''

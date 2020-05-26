@@ -7,88 +7,54 @@ from wordcloud import WordCloud, STOPWORDS, ImageColorGenerator
 import init_database
 import os.path
 import player
-'''
-def herodata(df,hero): 
-    #function returns the rows from the dataframe where hero_id = hero (given as argument)
-       
-    databyheros = df.copy()
-    #Filter dataframe by games (normal game mode) with chosen hero
-    databyheros = databyheros[(databyheros.hero_id==hero) & (databyheros.game_mode ==1)]
-    
-    wins = databyheros[databyheros.win==1].shape[0]         
-    games = databyheros.shape[0]
-    losses = (games - wins)
+from init_database import DotaDB
 
-    print(f"You have a total of {games} games as {hero} with a record of {wins} / {losses} ")   
+def main():
+
+    dbms = init_database.DotaDB()    
+    #dbms.initiate_database()
     
 
+    OPTIONS = 4
 
 
-while(True):
-    print("Choose option:                   ")
-    print("1 - Hero stats                   ")
-    print("2 - Game stats                   ")
-    print("3 - Player stats                 ")
-    print("4 - Display wordcloud of chat    ")
-
-    selection = 0
-    while selection not in [1,2,3]: 
-        selection = int(input())
-        
-        if selection == 1:            
-            print("Enter hero name")            
-            hero = input()
-            herodata(player_data,hero)                
-            break
-
-        if selection == 4:
-            wc_data = player_instance.wordCloud()            
-            list_of_words = (wc_data.get("my_word_counts"))
-            wc = WordCloud(background_color="white",width=1000,height=1000, max_words=20,relative_scaling=0.5,normalize_plurals=False).generate_from_frequencies(list_of_words) 
-            plt.imshow(wc)
-            plt.show()
-'''
-def create_db_tables(connection):
-    create_matches = """
-    CREATE TABLE IF NOT EXISTS match (
-    match_id INTEGER PRIMARY KEY,
-    player_slot INTEGER,    
-    radiant_win BOOLEAN,
-    duration INTEGER,
-    game_mode INTEGER,
-    lobby_type INTEGER,
-    hero_id TEXT,    
-    start_time TIMESTAMP,
-    version TEXT,
-    kills INTEGER,
-    deaths INTEGER,
-    assists INTEGER,
-    skill INTEGER,
-    lane INTEGER,
-    lane_role INTEGER,
-    is_roaming BOOLEAN,
-    cluster INTEGER,
-    leaver_status INTEGER,
-    party_size INTEGER,
-    win INTEGER      
-    );
-    """
-    init_database.execute_query(connection,create_matches)
-
-    create_player = """
-    CREATE TABLE IF NOT EXISTS player(
-        steam_id INTEGER PRIMARY KEY
-    );
-    """
-    init_database.execute_query(connection,create_player)
-
-def insert_player(conn, steam_id):
+    print("Welcome to DotaData!")                     
+    print("1 - Insert player into database")
+    print("2 - View matches")
+    print("3 - Read matches to csv")    
+    print("4 - View stats")
+    print("5 - Suggest hero")
     
-    query = f"""
-    INSERT INTO player VALUES ({int(steam_id)})
-    """
-    
-    init_database.execute_query(conn, query)
+    while(True):
+        print("Choose option")
+        option = input()
+        try:
+            value = int(option)
+        except ValueError:
+            print("Please select a numeric value")
+            continue        
+        if value == 1:
+            insert_player_to_db(dbms)
+
+        if value == 2:
+            dbms.print_all_data(table='matches')
+                      
+        if value == 3:
+           df = dbms.read_matches_to_df()
+           df = dbms.fill_team_data_to_matches(df)
+           df.to_csv("./matches_with_teams.csv")
+                 
+        if value==4:
+            view_player_stats(dbms)
+
+        if value == 5:
+            suggest_hero(dbms)
+
+        if value == 6:
+            df = dbms.read_heroes_to_df()
+            df.to_csv("./heroes_with_roles.csv")
+        else:
+            print(f"Please select a valid number, maximum is {OPTIONS}")     
 
 def view_players(conn):
 
@@ -112,7 +78,7 @@ def view_matches(conn):
     for row in rows:
        print(row)
 
-def insert_player_to_db(conn):
+def get_steam_id():
     print("Enter steam ID:")
     while(True):
         steam_id = input()
@@ -121,56 +87,35 @@ def insert_player_to_db(conn):
         except ValueError:
             ("Steam id must an integer")
             continue
-        if len(steam_id) == 8:
+        if len(steam_id) >= 5:
             break
         else:
             ("Length of the ID must be 8")
+    return value    
+
+def insert_player_to_db(database):
+    steam_id = get_steam_id()
         
     player_instance = dota_main.Playerdata(steam_id)
     df = player_instance.getPlayerData()     
-     
-    
-    write_df_to_database(df, conn, 'match')
-    insert_player(conn,int(value))
-    
+    #player_id = player.Player(steam_id)    
+    database.write_df_to_database(table='matches',df=df)
+    #database.insert_player_data(player_id.get_steamid())
 
-def write_df_to_database(df,conn,table):
-    df.to_sql(f"{table}", conn, if_exists="replace") 
-    
+def view_player_stats(database):
+    steam_id = get_steam_id()
+    df = database.view_data(steam_id)
+    print(df)
 
-def main():
-    OPTIONS = 4
-    path = (f'{os.getcwd()}/dota.sqlite')    
-    conn = init_database.create_connection(path)  
-    create_db_tables(conn)
-
-    print("Welcome to DotaData!")                     
-    print("1 - Insert player into database                   ")
-    print("2 - View players               ")
-    print("3 - View matches                             ")
-    print("4 - Display wordcloud of chat                 ")
-    
-    while(True):
-        print("Choose option")
-        option = input()
-        try:
-            value = int(option)
-        except ValueError:
-            print("Please select a numeric value")
-            continue        
-        if int(option) == 1:
-            insert_player_to_db(conn)
-        if int(option)== 2:
-            view_players(conn)
-        if int(option)== 3:
-            view_matches(conn)
-
-        else:
-            print(f"Please select a valid number, maximum is {OPTIONS}")     
-
-  
-    #write_database(df,conn) 
-
+def suggest_hero(database):
+    opponent_lineup = []
+    while True:
+        print(f"Enter enemy hero, enter 0 to stop ")
+        hero = input()
+        if hero == '0' : break   
+        if len(opponent_lineup)<5:
+            opponent_lineup.append(hero)
+    database.get_hero_matchups(opponent_lineup)
 
 if __name__ == "__main__":
     main()
