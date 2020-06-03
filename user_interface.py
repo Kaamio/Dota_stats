@@ -45,7 +45,12 @@ def main():
            df.to_csv("./matches_with_teams.csv")
                  
         if value==4:
-            view_player_stats(dbms)
+            steam_id = 54936413
+            heroes = dota_main.Playerdata(steam_id)
+            hero_dict = heroes.getheroes()
+            print(hero_dict)
+            hero_df = pd.DataFrame(hero_dict.items())
+            hero_df.to_csv('./hero_data.csv')
 
         if value == 5:
             suggest_hero(dbms)

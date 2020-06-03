@@ -1,10 +1,10 @@
-import pandas as import pd
+import pandas as pd
 import numpy as np
 
 carry_heroes = []
 support_heroes = []
 
-heroes = dota_main.Playerdata(steam_id)
+#heroes = dota_main.Playerdata(steam_id)
 
 def win_percentage_by_hero(df,hero): 
     #function returns the rows from the dataframe where hero_id = hero (given as argument)
@@ -19,5 +19,5 @@ def win_percentage_by_hero(df,hero):
 
     print(f"You have a total of {games} games as {hero} with a record of {wins} / {losses} ")  
 
-def win_percentage_by_hero(df):
+#def win_percentage_by_hero(df):
     
