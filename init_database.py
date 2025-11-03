@@ -3,17 +3,13 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey
 from sqlalchemy import select
-import sqlalchemy as db
+from datetime import date
+import sqlalchemy
 import pandas as pd
 import numpy as np
-import api_connect
 import requests
 import time
 
-#Table names
-#PLAYERS = "players"
-#MATCHES = 'matches'
-#HEROES = "heroes"
 roles = ['Carry', 'Support', 'Disabler', 'Lane support', 'Initiator', 'Jungler', 'Support', 'Durable', 'Nuker', 'Pusher', 'Escape']
 
 class DotaDB:
@@ -21,88 +17,81 @@ class DotaDB:
     db_engine = None
 
     def __init__(self, username='', password=''):   
-        self.db_engine = create_engine(f'sqlite:///dotadata.db')
+        self.db_engine = create_engine(f'sqlite:///dotadata.db')        
+        self.metadata = MetaData()
+        self.players = Table('players', self.metadata,   # Define the 'players' table
+            Column('steam_id', Integer, primary_key=True))
         
-    def initiate_database(self):
+        self.matches = Table('matches', self.metadata, # Define 'matches' table
+            Column('match_id', Integer),
+            Column('player_slot', Integer),    
+            Column('radiant_win', Integer),
+            Column('duration', Integer),
+            Column('game_mode', Integer),
+            Column('lobby_type', Integer),
+            Column('hero_id', String),    
+            Column('start_time', String),
+            Column('version', String),
+            Column('kills', Integer),
+            Column('deaths', Integer),
+            Column('assists', Integer),
+            Column('skill', Integer),  
+            Column('leaver_status', Integer),
+            Column('average_rank', Integer),
+            Column('party_size', Integer),
+            Column('win', Integer),
+            Column('steam_id', Integer))
 
-        # Create Tables
-        self.create_db_tables()
-        # Insert heroes into database
-        self.insert_heroes_to_db()
-
-    #def delete_table(self,table):        
-        #Not implemented
-
-    def get_hero_matchups(self,herolist):       
-       
-        enemy_lineup = []               
+    def insert_heroes(self):
+        # Insert heroes into database        
+        data = self.getdata(f"https://api.opendota.com/api/heroes")
+        heroes_df = pd.DataFrame.from_dict(data)  
         
-        for hero in herolist:
-            query = f"SELECT id from HEROES where localized_name = '{hero}' "  
-            hero = self.execute_query(query)
-            enemy_lineup.append(hero)        
-
-        matchup_df = pd.DataFrame()
-
-        for idx,heroid in enumerate(enemy_lineup):
-            matchups = api_connect.Api(f"https://api.opendota.com/api/heroes/{heroid[0][0]}/matchups")
-            data = matchups.getdata()
-            df = pd.DataFrame.from_dict(data)
-            df['win%'] = df['wins']/df['games_played']
-            df.drop(columns=['games_played', 'wins'],inplace=True)
-            df.set_index('hero_id',inplace=True)
-            
-            if matchup_df.empty:
-                matchup_df = df                
-            else:
-                matchup_df = matchup_df.merge(df,left_index=True, right_index=True,suffixes=(f'_{enemy_lineup[idx-1][0][0]}',f'_{heroid[0][0]}'))    
-        
-        matchup_df['combined_win_%'] = matchup_df.mean(axis=1)
-        #hero_suggestion = matchup_df[matchup_df['combined_win_%'] == matchup_df['combined_win_%'].min()]
-        matchup_df.sort_values(by='combined_win_%',inplace=True)
-        print(matchup_df.head())
-        
-        query = (f"SELECT localized_name from HEROES where id = '77' ")
-       
-        suggestion = self.execute_query(query)
-        print(suggestion)
-        
-      
-
-    def insert_heroes_to_db(self):
-        
-        api_connection = api_connect.Api(f"https://api.opendota.com/api/heroes")
-        data = api_connection.getdata()
-        heroes_df = pd.DataFrame.from_dict(data)
-        
-
         role_matrix = np.zeros((heroes_df.shape[0], len(roles)))
         role_matrix = pd.DataFrame(role_matrix)
 
         heroes_df = pd.concat([heroes_df,role_matrix],axis=1) 
         for idx,role in enumerate(roles):
-            heroes_df.rename(columns={idx : role},inplace=True )
-        
+            heroes_df.rename(columns={idx : role},inplace=True)        
 
         for idx,row in heroes_df.iterrows():
             for role in row['roles']:
                 heroes_df.iloc[idx,heroes_df.columns.get_loc(role)] = 1
         heroes_df.drop(['roles'],axis=1,inplace=True)
-        self.write_df_to_database('heroes',heroes_df)   
+        print(heroes_df.columns)
+        self.write_df_to_database(table='heroes',df = heroes_df)
 
-   
-    def insert_player_data(self,data):
-        # Insert Data 
-        query = f"INSERT INTO players (steam_id) " \
-                "VALUES ({data});"
-        self.execute_query(query)
+    def getdata(self,urli):              
+        result = requests.get(urli)
+        data = result.json()
+        return data    
+
+    #def delete_table(self,table):        
+        #Not implemented
+
+    
+
+    def insert_player_to_db(self,player):
+        if player.steamid:
+            id = player.steamid
+            connection = self.db_engine.connect() 
+            insert_stmt = sqlalchemy.insert(self.players).values(steam_id =id)
+            results = connection.execute(insert_stmt)   
+            print(results.rowcount)
+        else:
+            print('Steam id not found!')   
         
 
-    def create_db_tables(self):
+    def insert_matches_to_db(self,player):       
+        self.write_df_to_database(table='matches',df=player.df)     
+
+    def create_tables(self):
         metadata = MetaData()
 
-        matches = Table('matches', metadata,
-        Column('match_id', Integer, primary_key=True),
+        self.matches.drop(self.db_engine)
+
+        self.matches = Table('matches', metadata,
+        Column('match_id', Integer),
         Column('player_slot', Integer),    
         Column('radiant_win', Integer),
         Column('duration', Integer),
@@ -114,25 +103,34 @@ class DotaDB:
         Column('kills', Integer),
         Column('deaths', Integer),
         Column('assists', Integer),
-        Column('skill', Integer),
-        Column('lane', Integer),
-        Column('lane_role', Integer),
-        Column('is_roaming', Integer),
-        Column('cluster', Integer),
+        Column('skill', Integer),       
         Column('leaver_status', Integer),
+        Column('average_rank', Integer),
         Column('party_size', Integer),
-        Column('win', Integer))      
+        Column('win', Integer),
+        Column('steam_id', Integer))      
         
-        players = Table('players', metadata,
+        self.players = Table('players', metadata,
         Column('steam_id', Integer, primary_key=True))        
 
-        heroes = Table('heroes', metadata,
+        self.heroes = Table('heroes', metadata,               
         Column('id', Integer, primary_key=True),
         Column('name',String),
         Column('localized_name', String),
         Column('primary_attr', String),
         Column('attack_type',String),
-        Column('roles', String))
+        Column('legs', Integer),
+        Column('Carry', Integer),
+        Column('Support', Integer),
+        Column('Disabler',Integer),
+        Column('Lane Support', Integer),
+        Column('Initiator', Integer),
+        Column('Jungler', Integer),      
+        Column('Durable', Integer),
+        Column('Nuker', Integer),
+        Column('Pusher', Integer),
+        Column('Escape', Integer))
+        
 
         try:
             metadata.create_all(self.db_engine)
@@ -141,19 +139,33 @@ class DotaDB:
             print("Error occurred during Table creation!")
             print(e)
 
-    def execute_query(self, query):
+    def execute_query(self, query, params):
         if query == "" : return
-        print(query)
+        
         with self.db_engine.connect() as connection:
             try:
-                results = connection.execute(query)
+                results = connection.execute(query, params)
                 return results.fetchall()
             except Exception as e:
                 print(e)   
 
+    def get_summary(self):
+        connection = self.db_engine.connect()         
+        select_stmt = sqlalchemy.select(self.players)  
+        results = connection.execute(select_stmt)
+
+
+        print('Matches in database:')
+        select_stmt = sqlalchemy.select(self.matches)
+        results = connection.execute(select_stmt)
+        print(len(results.fetchall()))
+            
+
+
+
     def print_all_data(self, table='', query=''):
         query = f"SELECT * FROM {table};"
-        print(query)
+        
         with self.db_engine.connect() as connection:
             try:
                 result = connection.execute(query)
@@ -161,12 +173,12 @@ class DotaDB:
                 print(e)
             else:
                 for row in result:
-                    print(row) # print(row[0], row[1], row[2])
+                    print(row)
                 result.close()
         print("\n")
 
-    def read_matches_to_df(self):
-        query = "SELECT * FROM matches"
+    def read_matches_to_df(self,steamid):
+        query = (f"SELECT * FROM matches WHERE steam_id = {steamid}")
         conn = self.db_engine.connect()
         df = pd.read_sql(query, conn) 
      
@@ -184,21 +196,24 @@ class DotaDB:
         return df
 
     def fill_team_data_to_matches(self,df):
-        url = 'https://api.opendota.com/api/matches/'
-        for ind,row in df.iterrows():
-            if row['enemy_team'] != '0.0':
-                continue
+        url = 'https://api.opendota.com/api/matches/'        
+        for ind,row in df.iterrows():            
+            #if row['enemy_team'] != '0.0':
+            #    continue
+            
             radiant = []
             dire =[]
+            
             #If match duration is less than 10 minutes, skip it
             if row['duration']<600:
                 continue
             
             #Get match data from open dota, parse response
             match = row['match_id']    
-            player_req = requests.get(f"{url}{match}")
+            player_req = requests.get(f"{url}{match}")            
             if player_req:
-                time.sleep(1)            
+                time.sleep(0.2) 
+                print(row['match_id'])           
                 try:
                     players_data = player_req.json()
                 except Exception as e:
@@ -248,12 +263,9 @@ class DotaDB:
         except UnboundLocalError as e:
             print('Player not found!')
             return
-           
-   
-
-
-    def write_df_to_database(self,table,df):        
-        df.to_sql(f"{table}", self.db_engine, if_exists="append")
+    
+    def write_df_to_database(self,table,df):               
+        df.to_sql(f"{table}", self.db_engine, if_exists="append",index=False)
 
 
  
